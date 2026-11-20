@@ -1,5 +1,5 @@
 // Touch Cube offline worker. Bump VERSION on every release.
-const VERSION = 'touch-cube-1';
+const VERSION = 'touch-cube-2';
 const FILES = ["./", "index.html", "three.min.js", "manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/favicon-32.png"];
 
 self.addEventListener('install', event => {

@@ -490,12 +490,20 @@
     voice = { out, body, airLevel, windLevel, purr, driftPitch, ring, ringLevel, lfo, depth };
   }
 
+  // iPhone starts sound only from a touch it counts as deliberate, and a flick doesn't
+  // always count, so every kind of touch tries. A one-sample silent blip completes the start.
   function wakeSound() {
     try {
       if (!actx) buildSound();
-      if (actx && actx.state !== 'running') { const p = actx.resume(); if (p && p.catch) p.catch(() => {}); }
+      if (!actx || actx.state === 'running') return;
+      const p = actx.resume(); if (p && p.catch) p.catch(() => {});
+      const blip = actx.createBufferSource();
+      blip.buffer = actx.createBuffer(1, 1, actx.sampleRate);
+      blip.connect(actx.destination); blip.start(0);
     } catch (_) {}
   }
+  ['touchstart', 'touchend', 'click'].forEach(type =>
+    document.addEventListener(type, wakeSound, { capture: true, passive: true }));
 
   document.addEventListener('visibilitychange', () => {
     if (!actx) return;
@@ -599,7 +607,6 @@
   }
   stage.addEventListener('pointerup', release);
   stage.addEventListener('pointercancel', release);
-  stage.addEventListener('click', wakeSound);
   stage.addEventListener('contextmenu', e => e.preventDefault());
 
   /* ---- keyboard --------------------------------------------------------- */
@@ -621,6 +628,8 @@
     speed = Math.min(v, TOP_SPEED);
     wake();
   });
+
+  window.cubeBusy = () => pointerId !== null || speed > 0;   // lets an update wait for a still cube
 
   /* ---- start ------------------------------------------------------------ */
   // Resting pose: three faces showing, the copper dot towards the viewer.
@@ -648,6 +657,13 @@
 
   // Keep a copy on the phone so the app opens without a connection.
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    // When an update has downloaded, switch to it as soon as the cube is at rest.
+    let hadWorker = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadWorker) { hadWorker = true; return; }
+      const swap = () => (window.cubeBusy && window.cubeBusy()) ? setTimeout(swap, 600) : location.reload();
+      swap();
+    });
     addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
     });
