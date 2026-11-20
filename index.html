@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A metal cube you spin with your finger.">
+<meta name="theme-color" content="#0B0C10">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Touch Cube">
+<meta name="application-name" content="Touch Cube">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="splash/1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1260x2736.png" media="(device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="splash/640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<title>Touch Cube</title>
+<style>
+  :root {
+    /* layout: one metal cube, dead centre of a dark studio, nothing else on the page */
+    --bg: #0B0C10;        /* the room */
+    --glow: #232833;      /* pool of light behind the cube */
+    --metal: #4E535D;     /* graphite satin faces */
+    --polish: #E9ECF1;    /* bare polished edges */
+    --copper: #D4743A;    /* the one mark that lets the eye count turns */
+    --text: #C9CCD3;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+    --s: clamp(150px, 42vmin, 340px);   /* the cube's side on screen */
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  html {
+    background: var(--bg);
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+  }
+
+  body {
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 var(--font);
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* The touch target: a circle just big enough to hold the cube at any angle. */
+  .stage {
+    width: calc(var(--s) * 1.9);
+    height: calc(var(--s) * 1.9);
+    border-radius: 50%;
+    /* the same glow the 3D view draws, so the launch screen hands over without a flicker */
+    background: radial-gradient(circle closest-side, rgb(35.0 40.0 51.0) 0.0%, rgb(34.0 38.8 49.5) 12.5%, rgb(31.2 35.6 45.5) 25.0%, rgb(27.4 31.1 39.9) 37.5%, rgb(23.0 26.0 33.5) 50.0%, rgb(18.6 20.9 27.1) 62.5%, rgb(14.8 16.4 21.5) 75.0%, rgb(12.0 13.2 17.5) 87.5%, rgb(11.0 12.0 16.0) 100.0%);
+    touch-action: none;
+    cursor: grab;
+    outline: none;
+  }
+  .stage.is-held { cursor: grabbing; }
+  .stage:focus-visible {
+    outline: 2px solid var(--copper);
+    outline-offset: -6px;
+  }
+  .stage canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .note {
+    max-width: 30ch;
+    margin: 0;
+    padding: 0 16px;
+    text-align: center;
+    text-wrap: balance;
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage" tabindex="0" role="application"
+       aria-label="Metal cube. Drag to spin it, or press the arrow keys.">
+    <canvas id="view"></canvas>
+  </div>
+  <p class="note" id="note" hidden>This cube needs 3D graphics (WebGL), which this browser has switched off. Turn on hardware acceleration and reload the page.</p>
+
+<script src="three.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  const stage = document.getElementById('stage');
+  const canvas = document.getElementById('view');
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
+  const css = getComputedStyle(document.documentElement);
+  const token = name => css.getPropertyValue(name).trim();
+
+  function giveUp() {
+    stage.hidden = true;
+    document.getElementById('note').hidden = false;
+  }
+  if (!window.THREE) { giveUp(); return; }
+
+  /* ---- feel ----------------------------------------------------------- */
+  const GRIP = 0.6;        // drag distance for 1 radian, as a share of the cube's side
+  const AIR = 0.378;       // drag that scales with speed (1/s): fast spins shed speed fast
+  const RUB = 0.108;       // constant friction (rad/s²): brings slow spins to a clean stop
+  const TOP_SPEED = 34;    // rad/s
+  const MIN_FLING = 0.25;  // rad/s; slower than this on release counts as "let go", not "push"
+  const NUDGE = 3.2;       // rad/s added per arrow-key press
+  const SHUTTER = 0.85;    // share of each frame the "camera" stays open, for spin blur
+  const MAX_SMEAR = 0.7;   // most the blur may cover, in radians
+  const ROUND = 0.09;      // edge radius, as a share of the cube's side
+  const VIEW = 1.9;        // canvas side, in cube sides
+  const EYE = 4.2;         // camera distance, in cube sides
+
+  /* ---- renderer -------------------------------------------------------- */
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas, antialias: false, alpha: false, powerPreference: 'high-performance'
+    });
+  } catch (e) { giveUp(); return; }
+  renderer.autoClear = false;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+
+  const linear = name => new THREE.Color(token(name)).convertSRGBToLinear();
+  const raw = name => new THREE.Color(token(name));
+
+  /* ---- the cube -------------------------------------------------------- */
+  // A box whose edges and corners are true quarter-rounds. Triangles on the six
+  // flat faces go in group 0 (satin), everything rounded goes in group 1 (polished).
+  function roundedCube(size, r, k) {
+    const h = size / 2, inner = h - r;
+    const t = [];
+    for (let i = k; i >= 0; i--) t.push(-(inner + r * Math.tan((i / k) * Math.PI / 4)));
+    for (let i = 0; i <= k; i++) t.push(inner + r * Math.tan((i / k) * Math.PI / 4));
+    const n = t.length;
+    const pos = [], nor = [], flat = [], round = [];
+    const sides = [ // u, v, outward normal — with u × v = normal
+      [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+      [[-1, 0, 0], [0, 1, 0], [0, 0, -1]],
+      [[0, 0, -1], [0, 1, 0], [1, 0, 0]],
+      [[0, 0, 1], [0, 1, 0], [-1, 0, 0]],
+      [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
+      [[1, 0, 0], [0, 0, 1], [0, -1, 0]]
+    ];
+    const clamp = v => Math.max(-inner, Math.min(inner, v));
+    for (const [u, v, w] of sides) {
+      const base = pos.length / 3;
+      for (let j = 0; j < n; j++) {
+        for (let i = 0; i < n; i++) {
+          const p = [0, 1, 2].map(a => u[a] * t[i] + v[a] * t[j] + w[a] * h);
+          const c = p.map(clamp);
+          const d = [p[0] - c[0], p[1] - c[1], p[2] - c[2]];
+          const len = Math.hypot(d[0], d[1], d[2]);
+          const m = [d[0] / len, d[1] / len, d[2] / len];
+          pos.push(c[0] + m[0] * r, c[1] + m[1] * r, c[2] + m[2] * r);
+          nor.push(m[0], m[1], m[2]);
+        }
+      }
+      for (let j = 0; j < n - 1; j++) {
+        for (let i = 0; i < n - 1; i++) {
+          const a = base + j * n + i, b = a + 1, c = a + n, d = c + 1;
+          (i === k && j === k ? flat : round).push(a, b, d, a, d, c);
+        }
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setIndex(flat.concat(round));
+    g.addGroup(0, flat.length, 0);
+    g.addGroup(flat.length, round.length, 1);
+    return g;
+  }
+
+  const world = new THREE.Scene();
+  const satin = new THREE.MeshStandardMaterial({ color: linear('--metal'), metalness: 0.88, roughness: 0.4 });
+  const polished = new THREE.MeshStandardMaterial({ color: linear('--polish'), metalness: 1, roughness: 0.1 });
+  const cube = new THREE.Mesh(roundedCube(1, ROUND, 8), [satin, polished]);
+  world.add(cube);
+
+  // Copper dot, set off-centre in one face, with a thin dark seam around it.
+  const DOT = 0.058, DOT_AT = 0.25;
+  const decal = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 };
+  const dot = new THREE.Mesh(
+    new THREE.CircleGeometry(DOT, 64),
+    new THREE.MeshStandardMaterial(Object.assign({ color: linear('--copper'), metalness: 0.65, roughness: 0.38 }, decal))
+  );
+  dot.position.set(DOT_AT, DOT_AT, 0.5 + 0.0008);
+  const seam = new THREE.Mesh(
+    new THREE.RingGeometry(DOT, DOT + 0.008, 64),
+    new THREE.MeshStandardMaterial(Object.assign({ color: 0x050506, metalness: 0.2, roughness: 0.7 }, decal))
+  );
+  seam.position.set(DOT_AT, DOT_AT, 0.5 + 0.0005);
+  cube.add(dot, seam);
+
+  const key = new THREE.DirectionalLight(0xffffff, 1.4);
+  key.position.set(-3, 5, 4);
+  world.add(key);
+
+  const camera = new THREE.PerspectiveCamera(
+    2 * Math.atan(VIEW / 2 / EYE) * 180 / Math.PI, 1, EYE - 1.6, EYE + 1.6);
+  camera.position.set(0, 0, EYE);
+
+  /* ---- the studio the metal reflects ------------------------------------ */
+  // Dark room, a few soft boxes and strip lights. It never appears on screen;
+  // it only exists as reflections sliding over the cube.
+  (function buildStudio() {
+    const studio = new THREE.Scene();
+    const room = new THREE.Mesh(
+      new THREE.BoxGeometry(24, 24, 24),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(0.045, 0.048, 0.056), side: THREE.BackSide })
+    );
+    studio.add(room);
+    const lamp = (w, h, at, power, tint) => {
+      const m = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+      m.color.setRGB(tint[0] * power, tint[1] * power, tint[2] * power);
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+      mesh.position.set(at[0], at[1], at[2]);
+      mesh.lookAt(0, 0, 0);
+      studio.add(mesh);
+    };
+    const cool = [0.86, 0.93, 1.0], white = [1, 1, 1], warm = [1.0, 0.86, 0.72];
+    lamp(12, 12, [0, 10, -3], 2.6, cool);       // overhead soft box
+    lamp(9, 9, [-10, -1, 2], 2.0, white);       // big soft box, left
+    lamp(0.9, 14, [3, 1, 10.5], 11, white);     // tall strip behind the camera
+    lamp(0.7, 12, [8.5, 2, -7], 9, cool);       // rim strip, back right
+    lamp(8, 8, [10, -2, -1], 1.1, warm);        // warm fill, right
+    lamp(16, 10, [0, -10, 2], 0.9, warm);       // floor bounce
+    lamp(10, 6, [0, -6, 9], 0.8, cool);         // low fill, front
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    world.environment = pmrem.fromScene(studio, 0.015).texture;
+    pmrem.dispose();
+  })();
+
+  /* ---- backdrop and frame blending -------------------------------------- */
+  const flatCam = new THREE.Camera();
+  const quad = new THREE.PlaneGeometry(2, 2);
+  const passVert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+
+  const backdrop = new THREE.Scene();
+  backdrop.add(new THREE.Mesh(quad, new THREE.ShaderMaterial({
+    uniforms: { base: { value: raw('--bg') }, lift: { value: raw('--glow') } },
+    vertexShader: passVert,
+    fragmentShader: [
+      'varying vec2 vUv; uniform vec3 base; uniform vec3 lift;',
+      'void main(){',
+      '  float d = distance(vUv, vec2(0.5)) * 2.0;',
+      '  float g = 1.0 - smoothstep(0.0, 1.0, d);',
+      '  float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;',
+      '  gl_FragColor = vec4(mix(base, lift, g) + n * step(0.002, g) / 255.0, 1.0);',
+      '}'
+    ].join('\n'),
+    depthTest: false, depthWrite: false
+  })));
+
+  // Each frame is drawn several times at slightly different moments and sub-pixel
+  // offsets, and averaged. That gives smooth edges at rest and real blur at speed.
+  let target = new THREE.WebGLRenderTarget(4, 4, {
+    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+    format: THREE.RGBAFormat, encoding: THREE.sRGBEncoding, stencilBuffer: false
+  });
+  const mixer = new THREE.ShaderMaterial({
+    uniforms: { map: { value: target.texture }, weight: { value: 1 } },
+    vertexShader: passVert,
+    fragmentShader: 'varying vec2 vUv; uniform sampler2D map; uniform float weight;' +
+      'void main(){ gl_FragColor = vec4(texture2D(map, vUv).rgb, weight); }',
+    transparent: true, depthTest: false, depthWrite: false
+  });
+  const blend = new THREE.Scene();
+  blend.add(new THREE.Mesh(quad, mixer));
+
+  /* ---- state ----------------------------------------------------------- */
+  const q = new THREE.Quaternion();        // where the cube is now
+  const qShown = new THREE.Quaternion();   // where it was in the last drawn frame
+  const qStep = new THREE.Quaternion();
+  const dq = new THREE.Quaternion();
+  const vec = new THREE.Vector3();
+  let axis = [0, 1, 0];          // spin axis in screen space
+  let speed = 0;                 // rad/s around that axis
+  let pxPerRad = 100;
+  let px = 4;                    // canvas side in device pixels
+  let pointerId = null;
+  let lastX = 0, lastY = 0;
+  let trail = [];
+  let raf = 0, lastT = 0;
+  let crisp = false;             // a full-quality still frame is on screen
+  let maxSamples = matchMedia('(pointer: coarse)').matches ? 12 : 16;   // blur samples per frame, at most
+  let load = 0.016;              // running frame time, seconds
+  let detail = 1;                // share of full resolution used while moving
+  let scaleNow = 0;
+
+  function turn(ax, ay, az, angle) {
+    dq.setFromAxisAngle(vec.set(ax, ay, az), angle);
+    q.premultiply(dq).normalize();   // screen-space turn, whatever way the cube is facing
+  }
+
+  const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
+
+  function draw(samples, phase) {
+    const moved = 1 - Math.abs(qShown.dot(q)) > 1e-10;
+    for (let i = 0; i < samples; i++) {
+      if (moved) {
+        qStep.copy(qShown).slerp(q, (i + phase) / samples);
+        cube.quaternion.copy(qStep);
+      } else {
+        cube.quaternion.copy(q);
+      }
+      camera.setViewOffset(px, px, halton(i + 1, 2) - 0.5, halton(i + 1, 3) - 0.5, px, px);
+      renderer.setRenderTarget(target);
+      renderer.clear();
+      renderer.render(backdrop, flatCam);
+      renderer.render(world, camera);
+      renderer.setRenderTarget(null);
+      mixer.uniforms.weight.value = 1 / (i + 1);
+      renderer.render(blend, flatCam);
+    }
+    qShown.copy(q);
+  }
+
+  /* ---- coasting -------------------------------------------------------- */
+  // Speed follows dω/dt = -AIR·ω - RUB. Solved exactly, so the coast is the
+  // same on a 60 Hz phone and a 120 Hz one.
+  // A spin is always the user's own push, so the device's "reduce motion" setting does not
+  // brake it; that setting only skips the opening turn.
+  function timeToRest(w0) { return Math.log(1 + AIR * w0 / RUB) / AIR; }
+  function coastAngle(w0, t) { return (w0 + RUB / AIR) * (1 - Math.exp(-AIR * t)) / AIR - (RUB / AIR) * t; }
+  function coast(dt) {   // returns how far the cube turned
+    const rest = timeToRest(speed);
+    const t = Math.min(dt, rest);
+    const swept = coastAngle(speed, t);
+    turn(axis[0], axis[1], axis[2], swept);
+    speed = t >= rest ? 0 : (speed + RUB / AIR) * Math.exp(-AIR * t) - RUB / AIR;
+    if (speed < 1e-4) speed = 0;
+    return swept;
+  }
+
+  function frame(t) {
+    // Real elapsed time, even when a frame was slow: a slow phone must not turn the spin into slow motion.
+    const dt = Math.max(0, Math.min((t - lastT) / 1000, 0.25));
+    lastT = t;
+    if (dt === 0) { raf = requestAnimationFrame(frame); return; }
+
+    // How far the cube turned since the last drawn frame. qShown is then moved up to
+    // where the blur should start: the tail end of that turn, never more than MAX_SMEAR.
+    // The blur is also kept narrow enough for the samples this device can afford,
+    // so a slow phone shows a tighter blur, not ghost copies.
+    let swept, smear;
+    if (pointerId === null && speed > 0) {
+      swept = coast(dt);
+      smear = Math.min(swept * SHUTTER, MAX_SMEAR, maxSamples * 0.035);
+      dq.setFromAxisAngle(vec.set(axis[0], axis[1], axis[2]), -smear);
+      qShown.copy(q).premultiply(dq);
+    } else {
+      swept = 2 * Math.acos(Math.min(1, Math.abs(qShown.dot(q))));
+      smear = Math.min(swept * SHUTTER, MAX_SMEAR, maxSamples * 0.035);
+      if (swept > 2e-4) qShown.slerp(q, 1 - smear / swept);
+    }
+
+    if (swept > 2e-4) {
+      const samples = Math.max(4, Math.min(maxSamples, Math.ceil(4 + smear / 0.03)));
+      if (scaleNow !== detail) resize(detail);
+      draw(samples, Math.random());
+      crisp = false;
+      hear(swept / dt);
+      // If the device can't keep up: a lighter blur first, then a softer picture while moving.
+      load += (dt - load) * 0.2;
+      if (load > 0.024 && maxSamples > 6) { maxSamples -= 2; load = 0.017; }
+      else if (load > 0.04 && maxSamples > 4) { maxSamples = 4; load = 0.025; }
+      else if (load > 0.04 && detail > 0.5) { detail -= 0.25; load = 0.025; }
+    } else {
+      if (!crisp) { if (scaleNow !== 1) resize(1); draw(16, 0.5); crisp = true; }
+      hear(0);
+    }
+    raf = (pointerId !== null || speed > 0 || !crisp) ? requestAnimationFrame(frame) : 0;
+  }
+
+  function wake() {
+    if (raf) return;
+    lastT = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+
+  /* ---- sound ----------------------------------------------------------- */
+  // A small bearing spinning in air. Mostly wind: soft noise through a wide band that
+  // follows the spin and drifts like a gust, with the fine purr of rolling balls in it.
+  // Under that, faintly, the metal ringing. Everything falls in pitch as the spin slows
+  // and flutters four times per turn.
+  const PARTIALS = [[1, 0.5], [1.006, 0.35], [2.756, 0.3], [4.07, 0.12]];   // [pitch ratio, level]
+  const VOLUME = 0.27;                // master
+  const WIND = 1.25, RING = 0.035;   // loudest each layer gets, before the master
+  let actx = null, voice = null;
+
+  // Soft ("pink") noise that loops without a seam.
+  function softNoise(seconds) {
+    const rate = actx.sampleRate, len = Math.floor(rate * seconds), lead = 4096;
+    const x = new Float32Array(len + lead);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < x.length; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759;
+      b2 = 0.96900 * b2 + w * 0.1538520; b3 = 0.86650 * b3 + w * 0.3104856;
+      b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980;
+      x[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+      b6 = w * 0.115926;
+    }
+    const buf = actx.createBuffer(1, len, rate);
+    const d = buf.getChannelData(0);
+    d.set(x.subarray(lead));
+    for (let i = 0; i < lead; i++) {            // fade the tail into the run-up to the start
+      const t = i / lead * Math.PI / 2;
+      d[len - lead + i] = d[len - lead + i] * Math.cos(t) + x[i] * Math.sin(t);
+    }
+    return buf;
+  }
+
+  function buildSound() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    actx = new AC();
+    const out = actx.createGain(); out.gain.value = VOLUME;
+    const tame = actx.createBiquadFilter(); tame.type = 'lowpass'; tame.frequency.value = 9000;
+    const bus = actx.createGain(); bus.gain.value = 1;
+    bus.connect(tame); tame.connect(out); out.connect(actx.destination);
+    const osc = (type, hz) => { const o = actx.createOscillator(); o.type = type; o.frequency.value = hz; o.start(); return o; };
+    const amp = v => { const g = actx.createGain(); g.gain.value = v; return g; };
+
+    // wind
+    const noise = actx.createBufferSource(); noise.buffer = softNoise(4); noise.loop = true;
+    const body = actx.createBiquadFilter(); body.type = 'bandpass'; body.Q.value = 1.3; body.frequency.value = 450;
+    const airCut = actx.createBiquadFilter(); airCut.type = 'highpass'; airCut.frequency.value = 3200;
+    const airLevel = amp(0.15);
+    const grain = amp(1);        // rolling-ball purr
+    const gust = amp(1);         // slow swell
+    const windLevel = amp(0);
+    noise.connect(body); body.connect(grain);
+    noise.connect(airCut); airCut.connect(airLevel); airLevel.connect(grain);
+    grain.connect(gust); gust.connect(windLevel); windLevel.connect(bus);
+    noise.start();
+
+    const purr = osc('triangle', 18);
+    const purrDepth = amp(0.22);
+    purr.connect(purrDepth); purrDepth.connect(grain.gain);
+
+    const driftA = osc('sine', 0.23), driftB = osc('sine', 0.37);
+    const driftPitch = amp(0);   // how far the band wanders, in Hz
+    const driftLevel = amp(0.1);
+    driftA.connect(driftPitch); driftB.connect(driftPitch); driftPitch.connect(body.frequency);
+    driftA.connect(driftLevel); driftLevel.connect(gust.gain);
+
+    // metal ring, faint
+    const ringLevel = amp(0); ringLevel.connect(bus);
+    const ring = PARTIALS.map(([ratio, level]) => {
+      const o = osc('sine', 700 * ratio), g = amp(level);
+      o.connect(g); g.connect(ringLevel);
+      return o;
+    });
+
+    // the cube's four edges beating the air, once each per turn
+    const lfo = osc('sine', 0);
+    const depth = amp(0);
+    lfo.connect(depth); depth.connect(bus.gain);
+
+    voice = { out, body, airLevel, windLevel, purr, driftPitch, ring, ringLevel, lfo, depth };
+  }
+
+  function wakeSound() {
+    try {
+      if (!actx) buildSound();
+      if (actx && actx.state !== 'running') { const p = actx.resume(); if (p && p.catch) p.catch(() => {}); }
+    } catch (_) {}
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!actx) return;
+    try {
+      if (document.hidden) { if (actx.state === 'running') actx.suspend(); }
+      else if (actx.state !== 'running') { const p = actx.resume(); if (p && p.catch) p.catch(() => {}); }
+    } catch (_) {}
+  });
+
+  function hear(w) {
+    if (!voice || actx.state !== 'running') return;
+    const now = actx.currentTime;
+    const x = Math.min(w / TOP_SPEED, 1);
+    const rise = Math.pow(x, 0.6);              // pitch moves clearly even on a gentle spin
+    const loud = Math.pow(x, 0.55);
+    const band = 450 * Math.pow(2, 2.6 * rise); // wind: 450 Hz barely moving, about 2700 Hz flat out
+    voice.body.frequency.setTargetAtTime(band, now, 0.06);
+    voice.driftPitch.gain.setTargetAtTime(band * 0.16, now, 0.1);
+    voice.airLevel.gain.setTargetAtTime(0.15 + 0.5 * x, now, 0.06);
+    voice.windLevel.gain.setTargetAtTime(WIND * loud, now, 0.06);
+    voice.purr.frequency.setTargetAtTime(18 + 5.2 * w, now, 0.05);
+    const pitch = 700 * Math.pow(2, 1.6 * rise);
+    voice.ring.forEach((o, i) => o.frequency.setTargetAtTime(pitch * PARTIALS[i][0], now, 0.05));
+    voice.ringLevel.gain.setTargetAtTime(RING * loud, now, 0.06);
+    voice.lfo.frequency.setTargetAtTime(4 * w / (2 * Math.PI), now, 0.04);
+    voice.depth.gain.setTargetAtTime(0.34 * (1 - 0.5 * x), now, 0.06);
+  }
+
+  /* ---- touch / mouse / pen --------------------------------------------- */
+  function resize(scale) {
+    const side = stage.clientWidth;
+    if (!side) return false;
+    const want = Math.max(8, Math.round(side * Math.min(window.devicePixelRatio || 1, 2) * scale));
+    scaleNow = scale;
+    if (want !== px) {
+      px = want;
+      renderer.setPixelRatio(1);
+      renderer.setSize(px, px, false);
+      target.setSize(px, px);
+    }
+    return true;
+  }
+
+  function fit() {
+    if (!resize(1)) return;
+    pxPerRad = Math.max(40, stage.clientWidth / VIEW * GRIP);
+    crisp = false;
+    wake();
+  }
+
+  stage.addEventListener('pointerdown', e => {
+    if (pointerId !== null) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pointerId = e.pointerId;
+    try { stage.setPointerCapture(pointerId); } catch (_) {}
+    wakeSound();
+    speed = 0; // catching a spinning cube stops it under the finger
+    lastX = e.clientX; lastY = e.clientY;
+    trail = [{ t: e.timeStamp, x: lastX, y: lastY }];
+    stage.classList.add('is-held');
+    wake();
+  });
+
+  stage.addEventListener('pointermove', e => {
+    if (e.pointerId !== pointerId) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    const d = Math.hypot(dx, dy);
+    if (d === 0) return;
+    // Axis lies in the screen, at right angles to the drag: the surface follows the finger.
+    turn(dy / d, dx / d, 0, d / pxPerRad);
+    lastX = e.clientX; lastY = e.clientY;
+    trail.push({ t: e.timeStamp, x: lastX, y: lastY });
+    while (trail.length > 2 && e.timeStamp - trail[0].t > 140) trail.shift();
+  });
+
+  function release(e) {
+    if (e.pointerId !== pointerId) return;
+    pointerId = null;
+    stage.classList.remove('is-held');
+    wakeSound();
+
+    // Push strength = finger velocity just before letting go.
+    const now = e.timeStamp;
+    let recent = trail.filter(p => now - p.t <= 70);
+    // On a slow device samples are sparse: fall back to the last two, if the finger was still moving.
+    if (recent.length < 2 && trail.length >= 2 && now - trail[trail.length - 1].t <= 120) recent = trail.slice(-2);
+    speed = 0;
+    if (recent.length >= 2) {
+      const a = recent[0], b = recent[recent.length - 1];
+      const dt = Math.max((now - a.t) / 1000, 0.016);
+      const vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
+      const v = Math.hypot(vx, vy);
+      const w = v / pxPerRad;
+      if (w > MIN_FLING) {
+        axis = [vy / v, vx / v, 0];
+        speed = Math.min(w, TOP_SPEED);
+      }
+    }
+    trail = [];
+    wake();
+  }
+  stage.addEventListener('pointerup', release);
+  stage.addEventListener('pointercancel', release);
+  stage.addEventListener('click', wakeSound);
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+
+  /* ---- keyboard --------------------------------------------------------- */
+  const KEYS = {
+    ArrowRight: [0, 1, 0], ArrowLeft: [0, -1, 0],
+    ArrowDown: [1, 0, 0], ArrowUp: [-1, 0, 0]
+  };
+  stage.addEventListener('keydown', e => {
+    const k = KEYS[e.key];
+    if (!k) return;
+    e.preventDefault();
+    wakeSound();
+    const vx = axis[0] * speed + k[0] * NUDGE;
+    const vy = axis[1] * speed + k[1] * NUDGE;
+    const vz = axis[2] * speed + k[2] * NUDGE;
+    const v = Math.hypot(vx, vy, vz);
+    if (v < 1e-6) { speed = 0; return; }
+    axis = [vx / v, vy / v, vz / v];
+    speed = Math.min(v, TOP_SPEED);
+    wake();
+  });
+
+  /* ---- start ------------------------------------------------------------ */
+  // Resting pose: three faces showing, the copper dot towards the viewer.
+  turn(0, 1, 0, -35 * Math.PI / 180);
+  turn(1, 0, 0, 24 * Math.PI / 180);
+
+  // Open with one slow turn that settles into that pose, so the cube reads as something to spin.
+  if (!calm.matches) {
+    const n = Math.hypot(0.22, 1);
+    axis = [0.22 / n, 1 / n, 0];
+    speed = 3.0;
+    turn(axis[0], axis[1], axis[2], -coastAngle(speed, timeToRest(speed)));
+  }
+  qShown.copy(q);
+
+  fit();
+  addEventListener('resize', fit);
+})();
+</script>
+<script>
+  // Installed on the home screen, iOS would otherwise bounce the page or zoom on a pinch.
+  document.addEventListener('touchmove', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+  document.addEventListener('dblclick', e => e.preventDefault());
+
+  // Keep a copy on the phone so the app opens without a connection.
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
