@@ -97,6 +97,27 @@
     text-align: center;
     text-wrap: balance;
   }
+  /* Shown only while the device is still holding the sound back. */
+  .hint {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+    margin: 0;
+    padding: 0 16px;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.6s ease, visibility 0s linear 0.6s;
+  }
+  .hint.is-on {
+    opacity: 0.6;
+    visibility: visible;
+    transition: opacity 0.6s ease, visibility 0s;
+  }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -105,6 +126,7 @@
        aria-label="Metal cube. Drag to spin it, or press the arrow keys.">
     <canvas id="view"></canvas>
   </div>
+  <p class="hint" id="hint">Tap once for sound</p>
   <p class="note" id="note" hidden>This cube needs 3D graphics (WebGL), which this browser has switched off. Turn on hardware acceleration and reload the page.</p>
 
 <script src="three.min.js"></script>
@@ -490,18 +512,26 @@
     voice = { out, body, airLevel, windLevel, purr, driftPitch, ring, ringLevel, lfo, depth };
   }
 
-  // iPhone starts sound only from a touch it counts as deliberate, and a flick doesn't
-  // always count, so every kind of touch tries. A one-sample silent blip completes the start.
+  // iPhone lets a page start sound only from a tap: a touch that slides, like a spin,
+  // never counts. So every kind of touch tries, and until one succeeds a small line
+  // asks for a tap. A one-sample silent blip completes the start.
+  const hint = document.getElementById('hint');
+  const canSound = !!(window.AudioContext || window.webkitAudioContext);
+  function showHint() {
+    hint.classList.toggle('is-on', canSound && (!actx || actx.state !== 'running'));
+  }
   function wakeSound() {
     try {
-      if (!actx) buildSound();
-      if (!actx || actx.state === 'running') return;
-      const p = actx.resume(); if (p && p.catch) p.catch(() => {});
+      if (!actx) { buildSound(); if (actx) actx.onstatechange = showHint; }
+      if (!actx || actx.state === 'running') { showHint(); return; }
+      const p = actx.resume(); if (p && p.then) p.then(showHint, () => {});
       const blip = actx.createBufferSource();
       blip.buffer = actx.createBuffer(1, 1, actx.sampleRate);
       blip.connect(actx.destination); blip.start(0);
     } catch (_) {}
   }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(showHint, 800); });
+  showHint();
   ['touchstart', 'touchend', 'click'].forEach(type =>
     document.addEventListener(type, wakeSound, { capture: true, passive: true }));
 
